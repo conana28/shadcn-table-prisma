@@ -1,11 +1,11 @@
 "use server"
 
 import { SearchParams } from "@/types"
+import { Priority, Prisma, Status } from "@prisma/client"
 
 import { filterColumn } from "@/lib/filter-column"
 import prisma from "@/lib/prisma"
 import { searchParamsSchema } from "@/lib/validations/params"
-import { Priority, Prisma, Status } from "@prisma/client";
 
 type Task = {
   id: string
@@ -16,13 +16,14 @@ type Task = {
   priority: "low" | "medium" | "high"
 }
 
-type tasksWhereInput = Prisma.tasksWhereInput;
+type tasksWhereInput = Prisma.tasksWhereInput
 
 export async function getTasks(searchParams: SearchParams) {
   try {
-    const { page, per_page, sort, title, status, priority, operator } =
+    const { page, per_page, sort, title, code, status, priority, operator } =
       searchParamsSchema.parse(searchParams)
 
+    console.log("sort:", sort)
     const pageAsNumber = Number(page)
     const fallbackPage =
       isNaN(pageAsNumber) || pageAsNumber < 1 ? 1 : pageAsNumber
@@ -37,37 +38,46 @@ export async function getTasks(searchParams: SearchParams) {
     const statuses = (status?.split(".") as Task["status"][]) ?? []
     const priorities = (priority?.split(".") as Task["priority"][]) ?? []
 
-   
-    function buildWhereClause({ title, statuses, priorities }: {
-      title?: string;
-      statuses?: string[];
-      priorities?: string[];
+    function buildWhereClause({
+      code,
+      title,
+      statuses,
+      priorities,
+    }: {
+      title?: string
+      code?: string
+      statuses?: string[]
+      priorities?: string[]
     }): tasksWhereInput | undefined {
-      const conditions: Array<tasksWhereInput> = [];
+      const conditions: Array<tasksWhereInput> = []
 
       if (title) {
-        conditions.push({ title: { contains: title } });
+        conditions.push({ title: { contains: title } })
       }
-
+      if (code) {
+        conditions.push({ code: { contains: code } })
+      }
       if (statuses?.length ?? 0 > 0) {
-        const statusArray: Status[] = statuses as Status[]; // Add type assertion here
-        conditions.push({ status: { in: statusArray } });
+        const statusArray: Status[] = statuses as Status[] // Add type assertion here
+        conditions.push({ status: { in: statusArray } })
       }
 
       if (priorities?.length ?? 0 > 0) {
-        const prioritesArray: Priority[] = priorities as Priority[]; // Declare prioritesArray variable
-        conditions.push({ priority: { in: prioritesArray } });
+        const prioritesArray: Priority[] = priorities as Priority[] // Declare prioritesArray variable
+        conditions.push({ priority: { in: prioritesArray } })
       }
-    
+      console.log(conditions)
       // Combine conditions with OR if any are present
-      return conditions.length > 0 ? { OR: conditions } : undefined;
+      return conditions.length > 0 ? { OR: conditions } : undefined
     }
-    
+
     const whereClause = buildWhereClause({
+      code: code,
       title: title,
       statuses: statuses,
       priorities: priorities,
-    });
+    })
+
     const data = await prisma.tasks.findMany({
       where: whereClause,
       orderBy: {
@@ -88,4 +98,3 @@ export async function getTasks(searchParams: SearchParams) {
     return { data: [], pageCount: 0 }
   }
 }
-

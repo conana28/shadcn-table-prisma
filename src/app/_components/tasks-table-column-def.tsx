@@ -286,4 +286,8 @@ export const searchableColumns: DataTableSearchableColumn<Task>[] = [
     id: "title",
     title: "titles",
   },
+  {
+    id: "code",
+    title: "codes",
+  },
 ]
